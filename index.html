@@ -1,13 +1,3 @@
-
-// Anlage-Cockpit — öffentliche Verbindungswerte.
-// Diese zwei Werte dürfen öffentlich sein: der Zugriff ist durch RLS auf "nur lesen" beschränkt.
-// NIEMALS den service_role-Key oder DB-Passwörter hier eintragen.
-window.COCKPIT_CONFIG = {
-  SUPABASE_URL: "https://kbgjswhfypqdjcbyatcn.supabase.co",
-  SUPABASE_KEY: "sb_publishable_6Vux3I-n-6di7phmvN1vOQ_AKX6Vu7F",
-  TABLE: "cockpit"
-};
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -151,8 +141,15 @@ window.COCKPIT_CONFIG = {
   </footer>
 </div>
 
+<!-- Verbindungswerte direkt eingebaut (dürfen öffentlich sein, RLS schützt auf nur-lesen). -->
+<script>
+  window.COCKPIT_CONFIG = {
+    SUPABASE_URL: "https://kbgjswhfypqdjcbyatcn.supabase.co",
+    SUPABASE_KEY: "sb_publishable_6Vux3I-n-6di7phmvN1vOQ_AKX6Vu7F",
+    TABLE: "cockpit"
+  };
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
 <script>
 const CFG = window.COCKPIT_CONFIG || {};
 const TODAY = (()=>{const d=new Date();d.setHours(0,0,0,0);return d;})();
@@ -236,15 +233,17 @@ function renderApp(rows){
 async function load(){
   document.getElementById("app").innerHTML='<div class="state">Lade Daten aus der Datenbank …</div>';
   if(!CFG.SUPABASE_URL||!CFG.SUPABASE_KEY){
-    document.getElementById("app").innerHTML='<div class="state err">config.js fehlt oder ist leer. Trag <code>SUPABASE_URL</code> und <code>SUPABASE_KEY</code> ein.</div>';return;}
+    document.getElementById("app").innerHTML='<div class="state err">Verbindungswerte fehlen im Skript-Block.</div>';return;}
+  if(!window.supabase||!window.supabase.createClient){
+    document.getElementById("app").innerHTML='<div class="state err">supabase-js konnte nicht geladen werden (Internet/CDN?).</div>';return;}
   try{
-    const client=supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_KEY);
+    const client=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_KEY);
     const {data,error}=await client.from(CFG.TABLE||"cockpit").select("*").order("sort_order",{ascending:true});
     if(error)throw error;
     if(!data||!data.length){document.getElementById("app").innerHTML='<div class="state">Noch keine Karten in der Tabelle.</div>';return;}
     renderApp(data);
   }catch(e){
-    document.getElementById("app").innerHTML='<div class="state err">Verbindung fehlgeschlagen: '+esc(e.message||e)+'<br><br>Prüfe config.js und ob die RLS-Read-Policy aktiv ist.</div>';
+    document.getElementById("app").innerHTML='<div class="state err">Verbindung fehlgeschlagen: '+esc(e.message||e)+'</div>';
   }
 }
 document.getElementById("reload").addEventListener("click",load);
