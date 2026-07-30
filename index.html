@@ -1,0 +1,254 @@
+
+// Anlage-Cockpit — öffentliche Verbindungswerte.
+// Diese zwei Werte dürfen öffentlich sein: der Zugriff ist durch RLS auf "nur lesen" beschränkt.
+// NIEMALS den service_role-Key oder DB-Passwörter hier eintragen.
+window.COCKPIT_CONFIG = {
+  SUPABASE_URL: "https://kbgjswhfypqdjcbyatcn.supabase.co",
+  SUPABASE_KEY: "sb_publishable_6Vux3I-n-6di7phmvN1vOQ_AKX6Vu7F",
+  TABLE: "cockpit"
+};
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1720">
+<title>Anlage-Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --base:#0f1720; --panel:#16212e; --raised:#1d2b3a; --hair:#2c3d4f;
+    --ink:#e6edf3; --muted:#8da2b5; --faint:#5f7183;
+    --teal:#4fd1c5; --green:#5ec26a; --amber:#e0a53d; --red:#e5595b; --grey:#6b7c8f;
+    --disp:"Space Grotesk",sans-serif; --mono:"IBM Plex Mono",monospace; --body:"Inter",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--base);color:var(--ink);font-family:var(--body);line-height:1.5;
+    background-image:radial-gradient(circle at 15% -10%,rgba(79,209,197,.06),transparent 40%),radial-gradient(circle at 90% 0%,rgba(224,165,61,.05),transparent 35%);}
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--amber)}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 2px}
+  .sub{color:var(--muted);font-size:15px;max-width:60ch}
+  .metabar{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:16px;font-family:var(--mono);font-size:12px;color:var(--muted);align-items:center}
+  .metabar b{color:var(--ink);font-weight:500}
+  .refresh{font-family:var(--mono);font-size:12px;color:var(--base);background:var(--amber);border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+  .refresh:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+  .sec{margin-top:40px}
+  .sechead{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--hair);padding-bottom:8px;margin-bottom:18px}
+  .sechead h2{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:-.01em}
+  .sechead .count{font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .sechead .hint{margin-left:auto;font-size:12px;color:var(--faint)}
+
+  .radar{border:1px solid var(--hair);border-radius:12px;background:var(--panel);overflow:hidden}
+  .radar-top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--hair);background:var(--raised)}
+  .radar-top .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 3px rgba(224,165,61,.18)}
+  .radar-top h2{font-family:var(--disp);font-size:16px;font-weight:600}
+  .radar-top span{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto}
+  .radar-row{display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid var(--hair);font-size:14px}
+  .radar-row:last-child{border-bottom:0}
+  .radar-when{font-family:var(--mono);font-size:12px;min-width:96px;color:var(--muted)}
+  .radar-tkr{font-family:var(--mono);font-weight:600;min-width:62px;letter-spacing:.02em}
+  .radar-lbl{color:var(--muted);flex:1;min-width:0}
+  .radar-flag{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .flag-akut{color:var(--red);border:1px solid rgba(229,89,91,.5);background:rgba(229,89,91,.1)}
+  .flag-bald{color:var(--amber);border:1px solid rgba(224,165,61,.4);background:rgba(224,165,61,.08)}
+  .flag-fern{color:var(--faint);border:1px solid var(--hair)}
+  .pulse{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(229,89,91,0)}50%{box-shadow:0 0 0 4px rgba(229,89,91,.14)}}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+  .card{border:1px solid var(--hair);border-radius:12px;background:var(--panel);overflow:hidden;position:relative}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grey)}
+  .card.st-position::before{background:var(--teal)}
+  .card.st-chance::before{background:var(--green)}
+  .card.st-watch::before{background:var(--amber)}
+  .card.st-friedhof::before{background:var(--grey)}
+  .card.st-friedhof{opacity:.72}
+  .c-top{padding:15px 16px 12px;display:flex;align-items:flex-start;gap:10px}
+  .c-tkr{font-family:var(--mono);font-weight:600;font-size:16px;letter-spacing:.02em}
+  .c-name{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .c-badges{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+  .badge{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:5px;border:1px solid}
+  .b-position{color:var(--teal);border-color:rgba(79,209,197,.4);background:rgba(79,209,197,.08)}
+  .b-chance{color:var(--green);border-color:rgba(94,194,106,.4);background:rgba(94,194,106,.08)}
+  .b-watch{color:var(--amber);border-color:rgba(224,165,61,.4);background:rgba(224,165,61,.08)}
+  .b-friedhof{color:var(--grey);border-color:var(--hair);background:transparent}
+  .b-spur{color:var(--muted);border-color:var(--hair);background:transparent}
+
+  .c-metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hair);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+  .m{background:var(--panel);padding:9px 16px}
+  .m .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .m .v{font-family:var(--mono);font-size:13.5px;color:var(--ink);margin-top:2px}
+  .m .v.bad{color:var(--red)} .m .v.na{color:var(--faint)}
+  .m.full{grid-column:1 / -1}
+
+  .kat{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hair);font-size:12.5px}
+  .kat .ic{font-family:var(--mono);font-size:11px}
+  .kat b{font-family:var(--mono);font-weight:600}
+  .kat.akut{background:rgba(229,89,91,.07);color:var(--red)}
+  .kat.bald{color:var(--amber)} .kat.ruhig{color:var(--muted)}
+
+  .pruef{padding:12px 16px 4px}
+  .pruef .plabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+  .dots{display:flex;gap:6px;flex-wrap:wrap}
+  .pt{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-family:var(--mono);font-size:11px;font-weight:600;border:1px solid var(--hair)}
+  .pt.ok{color:var(--green);border-color:rgba(94,194,106,.45);background:rgba(94,194,106,.09)}
+  .pt.warn{color:var(--amber);border-color:rgba(224,165,61,.45);background:rgba(224,165,61,.09)}
+  .pt.bad{color:var(--red);border-color:rgba(229,89,91,.45);background:rgba(229,89,91,.09)}
+  .pt.na{color:var(--faint)}
+  .pnote{font-size:11px;color:var(--faint);margin-top:7px;font-style:italic}
+
+  .c-bot{padding:12px 16px 15px}
+  .these{font-size:13px;color:var(--muted);margin-bottom:9px}
+  .trig{font-size:12.5px;color:var(--ink);border-top:1px dashed var(--hair);padding-top:9px}
+  .trig .tk{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:2px}
+
+  .state{border:1px solid var(--hair);border-radius:12px;background:var(--panel);padding:28px 20px;text-align:center;color:var(--muted);font-size:14px}
+  .state.err{border-color:rgba(229,89,91,.4);color:var(--red)}
+  .state code{font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+  footer{margin-top:44px;border-top:1px solid var(--hair);padding-top:16px;font-size:12px;color:var(--faint);line-height:1.7}
+  footer b{color:var(--muted);font-weight:600}
+
+  @media (max-width:560px){.c-metrics{grid-template-columns:1fr}.radar-lbl{display:none}}
+  @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Antizyklisch · Regelbasiert · Trade Republic</div>
+    <h1>Anlage-Cockpit</h1>
+    <p class="sub">Eine Wahrheit für alle Kandidaten und Positionen. Live aus der Datenbank — auf PC und Handy derselbe Stand.</p>
+    <div class="metabar">
+      <span>Aktualisiert: <b id="stamp">…</b></span>
+      <span>Spur 1: <b>antizyklisch</b></span>
+      <span>Spur 2: <b>Momentum</b></span>
+      <button class="refresh" id="reload">Neu laden</button>
+    </div>
+  </header>
+
+  <section class="sec">
+    <div class="radar" id="radarBox">
+      <div class="radar-top">
+        <span class="dot"></span><h2>Katalysator-Radar</h2>
+        <span>Cash vor Katalysator · sortiert nach Nähe</span>
+      </div>
+      <div id="radarRows"></div>
+    </div>
+  </section>
+
+  <div id="app"></div>
+
+  <footer>
+    <b>Ehrliche Grenze:</b> Kein Hintergrund-Autopilot. Die Daten ändern sich, wenn du eine Session öffnest und mich „aktualisieren" lässt — ich schreibe dann mit deiner Freigabe in die Datenbank, du lädst neu.<br>
+    <b>Katalysator-Radar</b> = der Stolperdraht: kein Earnings-Termin geht mehr unbemerkt vorbei.
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const CFG = window.COCKPIT_CONFIG || {};
+const TODAY = (()=>{const d=new Date();d.setHours(0,0,0,0);return d;})();
+const STATUS_LABEL={position:"Position",chance:"Chance",watch:"Watch",friedhof:"Verworfen"};
+const PRUEF_NAMES=["Drawdown ≥25 %","Schlechte News raus","Kein Event ~3 Wo","Retracement <⅓","Bewertung <Median","Substanz intakt"];
+
+function daysUntil(iso){if(!iso)return null;const d=new Date(iso);return Math.round((d-TODAY)/86400000);}
+function whenText(iso,approx){const n=daysUntil(iso);if(n===null)return"—";
+  const de=new Date(iso).toLocaleDateString("de-DE",{day:"2-digit",month:"short"});
+  const rel=n<0?"vorbei":n===0?"heute":n===1?"morgen":"in "+n+" T";
+  return(approx?"~":"")+de+" · "+rel;}
+function flagFor(iso){const n=daysUntil(iso);if(n===null||n<0)return null;if(n<=7)return"akut";if(n<=21)return"bald";return"fern";}
+function esc(s){return(s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+function renderRadar(rows){
+  const box=document.getElementById("radarRows");
+  const items=rows.filter(d=>d.kat&&d.kat.date&&daysUntil(d.kat.date)!==null&&daysUntil(d.kat.date)>=0)
+    .sort((a,b)=>daysUntil(a.kat.date)-daysUntil(b.kat.date));
+  if(!items.length){box.innerHTML='<div class="radar-row"><span class="radar-lbl" style="display:block">Kein künftiger Katalysator datiert.</span></div>';return;}
+  box.innerHTML=items.map(d=>{
+    const f=flagFor(d.kat.date);
+    const flagTxt=f==="akut"?"CASH VOR KATALYSATOR":f==="bald"?"bald":"fern";
+    const cls=f==="akut"?"flag-akut pulse":f==="bald"?"flag-bald":"flag-fern";
+    return `<div class="radar-row"><span class="radar-when">${whenText(d.kat.date,d.kat.approx)}</span>
+      <span class="radar-tkr">${esc(d.ticker)}</span>
+      <span class="radar-lbl">${esc(d.kat.label)}</span>
+      <span class="radar-flag ${cls}">${flagTxt}</span></div>`;
+  }).join("");
+}
+function metricVal(v){
+  if(!v)return'<span class="v na">—</span>';
+  if(/nicht verifiziert|prüfen|unverifiziert/i.test(v))return`<span class="v na">${esc(v)}</span>`;
+  if(/kein Antizykliker|Strong Sell|#5|am 52-W-Hoch|\b0 %/i.test(v))return`<span class="v bad">${esc(v)}</span>`;
+  return`<span class="v">${esc(v)}</span>`;
+}
+function renderCard(d){
+  const spurBadge=d.spur&&d.spur!=="—"?`<span class="badge b-spur">Spur ${esc(d.spur)}</span>`:"";
+  let kat="";
+  if(d.kat){
+    const f=d.kat.date?flagFor(d.kat.date):null;
+    const cls=f==="akut"?"akut":f==="bald"?"bald":"ruhig";
+    const ic=f==="akut"?"▲":"•";
+    const when=d.kat.date?whenText(d.kat.date,d.kat.approx)+" — ":"";
+    kat=`<div class="kat ${cls}"><span class="ic">${ic}</span><span><b>Katalysator:</b> ${when}${esc(d.kat.label)}</span></div>`;
+  }
+  let pruef="";
+  if(Array.isArray(d.pruef)){
+    const dots=d.pruef.map((p,i)=>`<span class="pt ${p[0]}" title="${PRUEF_NAMES[i]||""}">${esc(p[1])}</span>`).join("");
+    pruef=`<div class="pruef"><div class="plabel">6-Punkte-Prüfstand</div><div class="dots">${dots}</div>${d.prue_note?`<div class="pnote">${esc(d.prue_note)}</div>`:""}</div>`;
+  }else if(d.prue_note){
+    pruef=`<div class="pruef"><div class="pnote" style="margin-top:0">${esc(d.prue_note)}</div></div>`;
+  }
+  return `<div class="card st-${esc(d.status)}">
+    <div class="c-top"><div><div class="c-tkr">${esc(d.ticker)}</div><div class="c-name">${esc(d.name)}</div></div>
+      <div class="c-badges"><span class="badge b-${esc(d.status)}">${STATUS_LABEL[d.status]||esc(d.status)}</span>${spurBadge}</div></div>
+    <div class="c-metrics">
+      <div class="m"><div class="k">Kurs · ${esc(d.kurs_stand)||"—"}</div>${metricVal(d.kurs)}</div>
+      <div class="m"><div class="k">Zacks</div>${metricVal(d.zacks)}</div>
+      <div class="m full"><div class="k">Drawdown / Kontext</div>${metricVal(d.drawdown)}</div>
+    </div>${kat}${pruef}
+    <div class="c-bot"><div class="these">${esc(d.these)}</div>
+      ${d.recheck_trigger&&d.recheck_trigger!=="—"?`<div class="trig"><span class="tk">Re-Check-Trigger</span>${esc(d.recheck_trigger)}</div>`:""}</div>
+  </div>`;
+}
+function renderApp(rows){
+  renderRadar(rows);
+  const groups=[["position","Positionen","gehalten — Stops &amp; Teilverkäufe managen"],
+    ["watch","Chancen &amp; Beobachten","6-Punkte-Prüfstand entscheidet"],
+    ["friedhof","Friedhof","verworfen — mit Re-Check-Trigger"]];
+  document.getElementById("app").innerHTML=groups.map(([st,title,hint])=>{
+    const items=rows.filter(d=>d.status===st);
+    if(!items.length)return"";
+    return `<section class="sec"><div class="sechead"><h2>${title}</h2>
+      <span class="count">${items.length} ${items.length===1?"Eintrag":"Einträge"}</span>
+      <span class="hint">${hint}</span></div>
+      <div class="grid">${items.map(renderCard).join("")}</div></section>`;
+  }).join("");
+  const latest=rows.map(r=>r.updated_at).filter(Boolean).sort().pop();
+  document.getElementById("stamp").textContent=latest?new Date(latest).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
+}
+async function load(){
+  document.getElementById("app").innerHTML='<div class="state">Lade Daten aus der Datenbank …</div>';
+  if(!CFG.SUPABASE_URL||!CFG.SUPABASE_KEY){
+    document.getElementById("app").innerHTML='<div class="state err">config.js fehlt oder ist leer. Trag <code>SUPABASE_URL</code> und <code>SUPABASE_KEY</code> ein.</div>';return;}
+  try{
+    const client=supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_KEY);
+    const {data,error}=await client.from(CFG.TABLE||"cockpit").select("*").order("sort_order",{ascending:true});
+    if(error)throw error;
+    if(!data||!data.length){document.getElementById("app").innerHTML='<div class="state">Noch keine Karten in der Tabelle.</div>';return;}
+    renderApp(data);
+  }catch(e){
+    document.getElementById("app").innerHTML='<div class="state err">Verbindung fehlgeschlagen: '+esc(e.message||e)+'<br><br>Prüfe config.js und ob die RLS-Read-Policy aktiv ist.</div>';
+  }
+}
+document.getElementById("reload").addEventListener("click",load);
+load();
+</script>
+</body>
+</html>
