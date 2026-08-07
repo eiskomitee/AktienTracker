@@ -124,7 +124,7 @@
   .pruef{padding:12px 16px 4px}
   .pruef .plabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
   .dots{display:flex;gap:6px;flex-wrap:wrap}
-  .pt{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-family:var(--mono);font-size:11px;font-weight:600;border:1px solid var(--hair)}
+  .pt{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-family:var(--mono);font-size:11px;font-weight:600;border:1px solid var(--hair);overflow:hidden;flex-shrink:0}
   .pt.ok{color:var(--green);border-color:rgba(94,194,106,.45);background:rgba(94,194,106,.09)}
   .pt.warn{color:var(--amber);border-color:rgba(224,165,61,.45);background:rgba(224,165,61,.09)}
   .pt.bad{color:var(--red);border-color:rgba(229,89,91,.45);background:rgba(229,89,91,.09)}
@@ -143,8 +143,33 @@
   footer{margin-top:44px;border-top:1px solid var(--hair);padding-top:16px;font-size:12px;color:var(--faint);line-height:1.7}
   footer b{color:var(--muted);font-weight:600}
 
+  /* --- Kaufsignal --- */
+  .b-kauf{color:#08130a;border-color:var(--green);background:var(--green);font-weight:700}
+  .card.sig::before{background:var(--green)!important}
+  .card.sig{box-shadow:0 0 0 1px rgba(94,194,106,.35)}
+  .pulse-green{animation:pulseGreen 1.8s ease-in-out infinite}
+  @keyframes pulseGreen{0%,100%{box-shadow:0 0 0 0 rgba(94,194,106,0)}50%{box-shadow:0 0 0 4px rgba(94,194,106,.22)}}
+  .kaufline{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--hair);
+    font-size:12.5px;color:var(--green);background:rgba(94,194,106,.08)}
+  .kaufline .ic{font-family:var(--mono);font-size:11px}
+  .kaufline b{font-family:var(--mono);font-weight:700}
+  .sechead.signal h2{color:var(--green)}
+  .sechead.signal::before{content:"";position:absolute;left:-14px;top:2px;bottom:2px;width:3px;background:var(--green);border-radius:2px}
+  .sechead.signal{position:relative}
+  /* --- Prüfstand: adaptive Detailzeilen bei langen Labels --- */
+  .pt-list{display:flex;flex-direction:column;gap:5px}
+  .pt-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+  .pt-num{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:20px;height:20px;
+    border-radius:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;border:1px solid var(--hair)}
+  .pt-num.ok{color:var(--green);border-color:rgba(94,194,106,.45);background:rgba(94,194,106,.09)}
+  .pt-num.warn{color:var(--amber);border-color:rgba(224,165,61,.45);background:rgba(224,165,61,.09)}
+  .pt-num.bad{color:var(--red);border-color:rgba(229,89,91,.45);background:rgba(229,89,91,.09)}
+  .pt-num.na{color:var(--faint)}
+  .pt-txt{min-width:0;word-break:break-word;line-height:1.35}
+  .pt-row.bad .pt-txt{color:var(--ink)}
+
   @media (max-width:560px){.c-metrics{grid-template-columns:1fr}.radar-lbl{display:none}}
-  @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+  @media (prefers-reduced-motion:reduce){.pulse,.pulse-green{animation:none}}
 </style>
 </head>
 <body>
@@ -169,7 +194,8 @@
         <div class="lg-grid">
           <div class="lg">
             <h4>Status</h4>
-            <div class="row"><span class="chip c-green">Chance</span><span>6-Punkte-Prüfstand bestanden — <b>Einstieg möglich</b>.</span></div>
+            <div class="row"><span class="chip c-green">● Kaufsignal</span><span><b>Gate offen.</b> Automatisch: Spur 1 = 6/6-Prüfstand grün, oder Spur 2 = Zacks #1/#2. Karte wandert nach oben, grün pulsierend — <b>jetzt prüfen &amp; einsteigen</b>.</span></div>
+            <div class="row"><span class="chip c-green">Chance</span><span>Manuell als kaufreif markiert — 6-Punkte-Prüfstand bestanden, <b>Einstieg möglich</b>.</span></div>
             <div class="row"><span class="chip c-amber">Watch</span><span>Unter akuter Beobachtung — wartet auf Trigger oder Event.</span></div>
             <div class="row"><span class="chip c-teal">Position</span><span>Gehalten — Stops &amp; Teilverkäufe managen.</span></div>
             <div class="row"><span class="chip c-grey">Verworfen</span><span>Friedhof — mit Re-Check-Trigger, falls sich etwas dreht.</span></div>
@@ -252,9 +278,18 @@ const TODAY = (()=>{const d=new Date();d.setHours(0,0,0,0);return d;})();
 const STATUS_LABEL={position:"Position",chance:"Chance",watch:"Watch",friedhof:"Verworfen"};
 const PRUEF_NAMES=["Drawdown \u226525 %","Schlechte News raus","Kein Event ~3 Wo","Retracement <\u2153","Bewertung <Median","Substanz intakt"];
 
-function daysUntil(iso){if(!iso)return null;const d=new Date(iso);return Math.round((d-TODAY)/86400000);}
-function whenText(iso,approx){const n=daysUntil(iso);if(n===null)return"\u2014";
-  const de=new Date(iso).toLocaleDateString("de-DE",{day:"2-digit",month:"short"});
+function parseDate(v){if(!v)return null;
+  // akzeptiert ISO (2026-10-27) UND deutsch (28.10.2026 / 28.10.26)
+  let d=new Date(v);
+  if(isNaN(d.getTime())){
+    const m=String(v).match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})$/);
+    if(m){let y=+m[3];if(y<100)y+=2000;d=new Date(y,(+m[2])-1,(+m[1]));}
+  }
+  return isNaN(d.getTime())?null:d;}
+function daysUntil(v){const d=parseDate(v);if(!d)return null;
+  const dd=new Date(d);dd.setHours(0,0,0,0);return Math.round((dd-TODAY)/86400000);}
+function whenText(iso,approx){const d0=parseDate(iso);if(!d0)return"\u2014";const n=daysUntil(iso);if(n===null)return"\u2014";
+  const de=d0.toLocaleDateString("de-DE",{day:"2-digit",month:"short"});
   const rel=n<0?"\u00fcberf\u00e4llig":n===0?"heute":n===1?"morgen":"in "+n+" T";
   return(approx?"~":"")+de+" \u00b7 "+rel;}
 function flagInfo(iso){const n=daysUntil(iso);if(n===null)return null;
@@ -273,19 +308,44 @@ function metricVal(v){
 }
 function katLine(d){
   if(!d.kat)return"";
-  const fi=d.kat.date?flagInfo(d.kat.date):null;
+  const valid=d.kat.date?!!parseDate(d.kat.date):false;
+  const fi=valid?flagInfo(d.kat.date):null;
   const cls=fi?fi.kat:"ruhig";
   const ic=(fi&&fi.need)?"\u25B2":"\u2022";
-  const when=d.kat.date?whenText(d.kat.date,d.kat.approx)+" \u2014 ":"";
-  return`<div class="kat ${cls}"><span class="ic">${ic}</span><span><b>Katalysator:</b> ${when}${esc(d.kat.label)}</span></div>`;
+  const when=valid?whenText(d.kat.date,d.kat.approx)+" \u2014 ":"";
+  const hint=(d.kat.date&&!valid)?' <span style="color:var(--faint)">\u00b7 Datum pr\u00fcfen</span>':"";
+  return`<div class="kat ${cls}"><span class="ic">${ic}</span><span><b>Katalysator:</b> ${when}${esc(d.kat.label)}${hint}</span></div>`;
 }
 function pruefBlock(d){
-  if(Array.isArray(d.pruef)){
-    const dots=d.pruef.map((p,i)=>`<span class="pt ${p[0]}" title="${PRUEF_NAMES[i]||""}">${esc(p[1])}</span>`).join("");
-    return`<div class="pruef"><div class="plabel">6-Punkte-Pr\u00fcfstand</div><div class="dots">${dots}</div>${d.prue_note?`<div class="pnote">${esc(d.prue_note)}</div>`:""}</div>`;
+  if(Array.isArray(d.pruef)&&d.pruef.length){
+    // Lange Labels -> lesbare Detailzeilen; reine Ziffern/Kurzglyphen -> kompakte Dots
+    const detail=d.pruef.some(p=>p&&p[1]!=null&&String(p[1]).length>3);
+    let body;
+    if(detail){
+      body=`<div class="pt-list">`+d.pruef.map((p,i)=>{
+        const st=(p&&p[0])||"na";
+        const txt=(p&&p[1]!=null&&String(p[1]).length>3)?esc(p[1]):(PRUEF_NAMES[i]||"");
+        return`<div class="pt-row ${st}"><span class="pt-num ${st}">${i+1}</span><span class="pt-txt">${txt}</span></div>`;
+      }).join("")+`</div>`;
+    }else{
+      body=`<div class="dots">`+d.pruef.map((p,i)=>`<span class="pt ${(p&&p[0])||"na"}" title="${PRUEF_NAMES[i]||""}">${esc(p&&p[1])}</span>`).join("")+`</div>`;
+    }
+    return`<div class="pruef"><div class="plabel">6-Punkte-Pr\u00fcfstand</div>${body}${d.prue_note?`<div class="pnote">${esc(d.prue_note)}</div>`:""}</div>`;
   }
   if(d.prue_note)return`<div class="pruef"><div class="pnote" style="margin-top:0">${esc(d.prue_note)}</div></div>`;
   return"";
+}
+// --- Kaufsignal-Ableitung (nur Anzeige, keine Order) ---
+function zacksRank(v){const m=String(v||"").match(/#\s*([1-5])/);return m?+m[1]:null;}
+function buyReady(d){
+  // Spur 1: alle sechs Prüfpunkte "ok" (kein 6-von-7, strikt)
+  if(Array.isArray(d.pruef)&&d.pruef.length>=6&&d.pruef.every(p=>p&&p[0]==="ok"))
+    return"Spur 1 \u2014 6/6-Pr\u00fcfstand bestanden";
+  // Spur 2: Momentum-Motor, Zacks #1/#2 mit steigenden Schätzungen
+  const z=zacksRank(d.zacks);
+  if((String(d.spur)==="2")&&(z===1||z===2))
+    return"Spur 2 \u2014 Zacks #"+z+", Momentum-Motor";
+  return null;
 }
 function metricsBlock(d){
   return`<div class="c-metrics">
@@ -300,12 +360,16 @@ function needsUpdate(d){const fi=d.kat&&d.kat.date?flagInfo(d.kat.date):null;ret
 
 function renderCard(d){
   const nu=needsUpdate(d);
+  const sig=(d.status!=="friedhof"&&d.status!=="position")?buyReady(d):null;
   const spurBadge=d.spur&&d.spur!=="\u2014"?`<span class="badge b-spur">Spur ${esc(d.spur)}</span>`:"";
   const updBadge=nu?`<span class="badge b-update">Aktualisieren</span>`:"";
-  return `<div class="card st-${esc(d.status)}${nu?" needupdate":""}">
+  const kaufBadge=sig?`<span class="badge b-kauf">\u25CF Kaufsignal</span>`:"";
+  const kaufLine=sig?`<div class="kaufline"><span class="ic">\u25B2</span><span><b>KAUFSIGNAL:</b> ${esc(sig)}</span></div>`:"";
+  const cls=`card st-${esc(d.status)}${nu?" needupdate":""}${sig?" sig pulse-green":""}`;
+  return `<div class="${cls}">
     <div class="c-top"><div style="min-width:0"><div class="c-tkr">${esc(d.ticker)}</div><div class="c-name">${esc(d.name)}</div></div>
-      <div class="c-badges"><span class="badge b-${esc(d.status)}">${STATUS_LABEL[d.status]||esc(d.status)}</span>${updBadge||spurBadge}</div></div>
-    ${metricsBlock(d)}${katLine(d)}${pruefBlock(d)}
+      <div class="c-badges"><span class="badge b-${esc(d.status)}">${STATUS_LABEL[d.status]||esc(d.status)}</span>${kaufBadge||updBadge||spurBadge}</div></div>
+    ${metricsBlock(d)}${kaufLine}${katLine(d)}${pruefBlock(d)}
     <div class="c-bot"><div class="these">${esc(d.these)}</div>
       ${d.recheck_trigger&&d.recheck_trigger!=="\u2014"?`<div class="trig"><span class="tk">Re-Check-Trigger</span>${esc(d.recheck_trigger)}</div>`:""}</div>
   </div>`;
@@ -342,12 +406,23 @@ function renderRadar(rows){
 }
 function renderApp(rows){
   ROWS=rows; renderRadar(rows);
+  // Kaufsignal-Kandidaten: manuell "chance" ODER abgeleitetes Signal aus Watch
+  const signalItems=rows.filter(d=>d.status==="chance"||(d.status==="watch"&&buyReady(d)));
+  const signalKeys=new Set(signalItems.map(d=>d.ticker+"|"+d.name));
+  const inSignal=d=>signalKeys.has(d.ticker+"|"+d.name);
+  let html="";
+  if(signalItems.length){
+    html+=`<section class="sec"><div class="sechead signal"><h2>Kaufsignal</h2>
+      <span class="count">${signalItems.length} ${signalItems.length===1?"Eintrag":"Eintr\u00e4ge"}</span>
+      <span class="hint">Gate offen \u2014 pr\u00fcfen &amp; einsteigen</span></div>
+      <div class="grid">${signalItems.map(renderCard).join("")}</div></section>`;
+  }
   const groups=[
     ["watch","Chancen &amp; Beobachten","6-Punkte-Pr\u00fcfstand entscheidet","grid"],
     ["position","Positionen","gehalten \u2014 Stops &amp; Teilverk\u00e4ufe","grid compact"],
     ["friedhof","Friedhof","verworfen \u2014 mit Re-Check-Trigger","grid compact"]];
-  document.getElementById("app").innerHTML=groups.map(([st,title,hint,gcls])=>{
-    const items=rows.filter(d=>d.status===st);
+  html+=groups.map(([st,title,hint,gcls])=>{
+    const items=rows.filter(d=>d.status===st&&!inSignal(d));
     if(!items.length)return"";
     const small=st!=="watch"?" small":"";
     return `<section class="sec"><div class="sechead${small}"><h2>${title}</h2>
@@ -355,6 +430,7 @@ function renderApp(rows){
       <span class="hint">${hint}</span></div>
       <div class="${gcls}">${items.map(renderCard).join("")}</div></section>`;
   }).join("");
+  document.getElementById("app").innerHTML=html;
   const nu=rows.filter(needsUpdate).length;
   const ub=document.getElementById("updatebar");
   document.getElementById("updateCount").textContent=nu;
